@@ -36,6 +36,11 @@ namespace OpenIris.UI
 
         private readonly EyeCollection<ImageBox> imageBoxes;
 
+        // Variables for keeping track of held buttons
+        private readonly Timer moveCommandTimer;
+        private readonly Timer holdTimer;
+        private Button? pressedMoveButton;
+
         private (string name, ICalibrationUIControl? control)? calibrationUI;
         private (string name, EyeCollection<EyeTrackingPipelineBase?>? pipelines)? pipelineUI;
 
@@ -45,6 +50,13 @@ namespace OpenIris.UI
         public EyeTrackerGui()
         {
             InitializeComponent();
+
+            // Initialize button hold timers
+            moveCommandTimer = new Timer { Interval = 100 };
+            moveCommandTimer.Tick += MoveCommandTimer_Tick;
+
+            holdTimer = new Timer { Interval = 500 };
+            holdTimer.Tick += HoldTimer_Tick;
 
             imageBoxes = new EyeCollection<ImageBox>(imageBoxLeftEye, imageBoxRightEye);
 
@@ -141,15 +153,26 @@ namespace OpenIris.UI
 
                 eyeTrackerUICommands.EditSettingsCommand.Bind(configurationToolStripMenuItem);
 
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeUp);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeDown);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeRight);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeLeft);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeUp);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeDown);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeRight);
-                eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeLeft);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeUp);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeDown);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeRight);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveRightEyeLeft);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeUp);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeDown);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeRight);
+                //eyeTrackerUICommands.MoveCamerasCommand.Bind(buttonMoveLeftEyeLeft);
 
+                var moveButtons = new[]
+                {
+                    buttonMoveRightEyeUp, buttonMoveRightEyeDown, buttonMoveRightEyeRight, buttonMoveRightEyeLeft,
+                    buttonMoveLeftEyeUp, buttonMoveLeftEyeDown, buttonMoveLeftEyeRight, buttonMoveLeftEyeLeft
+                };
+
+                foreach (var button in moveButtons)
+                {
+                    button.MouseDown += MoveButton_MouseDown;
+                    button.MouseUp += MoveButton_MouseUp;
+                }
 
                 eyeTrackerUICommands.IncreaseExposureCommand.Bind(buttonIncreaseExposure);
                 eyeTrackerUICommands.ReduceExposureCommand.Bind(buttonReduceExposure);
@@ -208,6 +231,7 @@ namespace OpenIris.UI
                 MessageBox.Show("GUI:Load: " + ex.ToString());
             }
         }
+
 
         private void UpdateUI()
         {
@@ -601,7 +625,43 @@ namespace OpenIris.UI
 
             statusStrip1.Refresh();
         }
+        private void MoveButton_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (sender is Button button)
+            {
+                pressedMoveButton = button;
+                eyeTrackerUICommands.MoveCamerasCommand.Execute(pressedMoveButton);
+                holdTimer.Start();
+            }
+        }
 
+        private void MoveButton_MouseUp(object sender, MouseEventArgs e)
+        {
+            holdTimer.Stop();
+            moveCommandTimer.Stop();
+            pressedMoveButton = null;
+        }
+
+        private void HoldTimer_Tick(object sender, EventArgs e)
+        {
+            holdTimer.Stop();
+            if (pressedMoveButton != null)
+            {
+                moveCommandTimer.Start();
+            }
+        }
+
+        private void MoveCommandTimer_Tick(object sender, EventArgs e)
+        {
+            if (pressedMoveButton != null && eyeTrackerUICommands.MoveCamerasCommand.CanExecute(null))
+            {
+                eyeTrackerUICommands.MoveCamerasCommand.Execute(pressedMoveButton);
+            }
+            else
+            {
+                moveCommandTimer.Stop();
+            }
+        }
         private void TimerRefreshUI_Tick(object sender, EventArgs e)
         {
             var hasLock = false;
