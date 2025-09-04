@@ -14,6 +14,7 @@ namespace OpenIris.UI
     using OpenIris.ImageGrabbing;
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.Diagnostics;
     using System.Drawing;
     using System.Linq;
@@ -65,6 +66,7 @@ namespace OpenIris.UI
             try
             {
                 eyeTracker = EyeTracker.Create();
+
             }
             catch(Exception ex)
             {
@@ -89,6 +91,8 @@ namespace OpenIris.UI
                         eyeTracker.StopTracking();
                     }
                 };
+
+            eyeTracker.Settings.PropertyChanged += EyeTracker_Settings_PropertyChanged;
 
             eyeTrackerUICommands = new EyeTrackerUICommands(eyeTracker);
 
@@ -333,6 +337,27 @@ namespace OpenIris.UI
                 systemToolStripMenuItem.Visible = false;
             }
         }
+
+        private void EyeTracker_Settings_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            // Check if the property that changed was SessionName
+            if (e.PropertyName == nameof(EyeTrackerSettings.SessionName))
+            {
+                // Use Invoke to safely update the UI from a different thread
+                if (textBoxSession.InvokeRequired)
+                {
+                    textBoxSession.Invoke(new Action(() =>
+                    {
+                        textBoxSession.Text = eyeTracker.Settings.SessionName;
+                    }));
+                }
+                else
+                {
+                    textBoxSession.Text = eyeTracker.Settings.SessionName;
+                }
+            }
+        }
+
         private void UpdateTabStart()
         {
             if (eyeTracker.Tracking is false)

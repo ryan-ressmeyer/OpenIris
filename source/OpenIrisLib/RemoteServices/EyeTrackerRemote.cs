@@ -493,6 +493,13 @@ namespace OpenIris
                     var result = CalibrationMessage(data);
                     return Encoding.ASCII.GetBytes(result);
 
+                case "SETSESSIONNAME":
+                    if (eyeTracker != null)
+                    {
+                        eyeTracker.Settings.SessionName = data;
+                    }
+                    return bytesToSend;
+
                 case "TESEMPTY":
                     return new byte[1] { 68 };
                 default:
